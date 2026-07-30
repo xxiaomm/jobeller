@@ -1,0 +1,82 @@
+from datetime import datetime
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.session import get_db
+from app.models.job import Job
+from app.schemas.job import JobCreate, JobList, JobRead
+
+router = APIRouter(prefix="/api/jobs", tags=["jobs"])
+
+
+@router.get("", response_model=JobList)
+async def list_jobs(
+    db: AsyncSession = Depends(get_db),
+    title: Optional[str] = Query(None, description="Fuzzy match on job title"),
+    company: Optional[str] = Query(None, description="Fuzzy match on company name"),
+    level: Optional[str] = None,
+    location: Optional[str] = Query(None, description="Fuzzy match on location"),
+    min_years: Optional[int] = Query(None, description="Job's minimum required years <= this value"),
+    max_years: Optional[int] = Query(None, description="Job's maximum required years >= this value"),
+    education: Optional[str] = None,
+    posted_after: Optional[datetime] = None,
+    posted_before: Optional[datetime] = None,
+    is_active: Optional[bool] = True,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+) -> JobList:
+    filters = []
+    if title:
+        filters.append(Job.title.ilike(f"%{title}%"))
+    if company:
+        filters.append(Job.company.ilike(f"%{company}%"))
+    if level:
+        filters.append(Job.level == level)
+    if location:
+        filters.append(Job.location.ilike(f"%{location}%"))
+    if min_years is not None:
+        filters.append(Job.min_years_experience <= min_years)
+    if max_years is not None:
+        filters.append(Job.max_years_experience >= max_years)
+    if education:
+        filters.append(Job.education == education)
+    if posted_after:
+        filters.append(Job.posted_at >= posted_after)
+    if posted_before:
+        filters.append(Job.posted_at <= posted_before)
+    if is_active is not None:
+        filters.append(Job.is_active == is_active)
+
+    count_stmt = select(func.count()).select_from(Job).where(*filters)
+    total = (await db.execute(count_stmt)).scalar_one()
+
+    stmt = (
+        select(Job)
+        .where(*filters)
+        .order_by(Job.posted_at.desc().nullslast(), Job.id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
+    jobs = (await db.execute(stmt)).scalars().all()
+
+    return JobList(total=total, page=page, page_size=page_size, items=jobs)
+
+
+@router.get("/{job_id}", response_model=JobRead)
+async def get_job(job_id: int, db: AsyncSession = Depends(get_db)) -> Job:
+    job = await db.get(Job, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
+
+
+@router.post("", response_model=JobRead, status_code=201)
+async def create_job(payload: JobCreate, db: AsyncSession = Depends(get_db)) -> Job:
+    job = Job(**payload.model_dump())
+    db.add(job)
+    await db.commit()
+    await db.refresh(job)
+    return job

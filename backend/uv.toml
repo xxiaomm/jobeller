@@ -1,0 +1,3 @@
+[[index]]
+url = "https://artifactory.corp.ebay.com/artifactory/api/pypi/pypi-remote/simple/"
+default = true
