@@ -8,6 +8,13 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6380/0"
     cors_origins: str = "http://localhost:3001"
 
+    secret_key: str = "dev-secret-key-change-me"
+    access_token_expire_minutes: int = 60 * 24 * 7
+
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_redirect_uri: str = "http://localhost:8001/api/auth/google/callback"
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
