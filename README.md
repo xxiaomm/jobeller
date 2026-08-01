@@ -5,13 +5,14 @@ location, years of experience, degree requirement and post date, and get notifie
 email as soon as a new job matches.
 
 > Current repo status: the backend base framework (data model + filter API + DB
-> migrations) is done. The frontend and the scraping engine are chosen but not yet
+> migrations) is done. Email/Google-OAuth auth is wired up end to end (backend +
+> frontend). The job board UI and the scraping engine are chosen but not yet
 > implemented — see "Current status" below.
 
 ## Tech stack
 
-### Frontend — Next.js (TypeScript) + Tailwind CSS + shadcn/ui
-*(chosen, not yet implemented)*
+### Frontend — Next.js (TypeScript) + Tailwind CSS
+*(auth pages implemented: signup/login/Google OAuth callback; job board UI not yet built)*
 
 - Next.js ships routing out of the box and supports SSR. SEO matters a lot for a job
   board — SSR lets each company's job listing/detail pages rank well on Google, which
@@ -74,7 +75,9 @@ email as soon as a new job matches.
 | Module | Status |
 | --- | --- |
 | `backend/` — FastAPI app, `Job` data model, filter API, Alembic migrations | ✅ Done |
-| `frontend/` — Next.js frontend | ⏳ Not started |
+| `backend/` — email signup/login + Google OAuth | ✅ Done |
+| `frontend/` — Next.js auth pages (signup/login/Google OAuth callback) | ✅ Done |
+| `frontend/` — job board UI (filters/list/detail) | ⏳ Not started |
 | `scraper/` — Playwright/Scrapy scraping engine | ⏳ Not started |
 | Redis notification/queue consumer logic | ⏳ Not started (Redis service is ready) |
 
@@ -114,16 +117,30 @@ email as soon as a new job matches.
    > configured to use the internal mirror at `artifactory.corp.ebay.com`
    > (`pypi-remote`) — `uv sync` will use it automatically.
 
-3. **(Optional) copy the env file.** `app/core/config.py` reads `backend/.env` for
-   settings like `DATABASE_URL`/`REDIS_URL`/`CORS_ORIGINS`. This step only matters if
-   you want to override a default (e.g. point at a different database).
+3. **Copy the env file.** `app/core/config.py` reads `backend/.env` for settings like
+   `DATABASE_URL`/`REDIS_URL`/`CORS_ORIGINS`.
 
    ```bash
    cp ../.env.example .env
    ```
 
-   If you skip this, the hardcoded defaults in `backend/app/core/config.py` already
-   match the ports in `docker-compose.yml`, so the app works without a `.env` file.
+   If you only need `/api/jobs`, the hardcoded defaults in
+   `backend/app/core/config.py` already match the ports in `docker-compose.yml`, so
+   this step can be skipped. **But Google login needs a real `.env`:**
+   `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` default to empty, so without a
+   `backend/.env` containing real values the Google OAuth flow fails immediately.
+   To enable it:
+
+   1. Create an OAuth 2.0 Client ID at the
+      [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+      (application type: Web application).
+   2. Fill `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` in `backend/.env` with the
+      values from that client.
+   3. Add `http://localhost:8001/api/auth/google/callback` as an Authorized redirect
+      URI on that client — it must match `GOOGLE_REDIRECT_URI` in `.env` exactly.
+   4. Make sure `FRONTEND_URL` in `.env` matches the port the frontend actually runs
+      on (`http://localhost:3001` by default) — the backend redirects here after a
+      successful Google login.
 
 4. **Run database migrations.** This connects to the Postgres container from step 1
    and applies every migration under `backend/migrations/versions/` in order —
@@ -131,6 +148,7 @@ email as soon as a new job matches.
    indexes.
 
    ```bash
+   cd backend
    uv run alembic upgrade head
    ```
 
@@ -139,17 +157,31 @@ email as soon as a new job matches.
    the `jobell` project's backend on `8000`).
 
    ```bash
+   cd backend
    uv run uvicorn app.main:app --reload --port 8001
    ```
+
+6. **Install frontend dependencies and start the dev server.** This installs the
+   Next.js app under `frontend/` and runs it on port `3001` (configured in
+   `frontend/package.json`'s `dev` script).
+
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+   `frontend/.env.local` sets `NEXT_PUBLIC_API_URL=http://localhost:8001` so the
+   frontend knows where to reach the backend; there's a `.env.local.example` to copy
+   from if `.env.local` doesn't exist yet.
 
 ### Open in the browser
 
 - **Backend Swagger docs** (interactive API explorer, auto-generated from the FastAPI
   routes): http://localhost:8001/docs
 - **Backend health check**: http://localhost:8001/health
-- **Frontend**: http://localhost:3001 — not implemented yet; this URL will work once
-  the Next.js app under `frontend/` exists and is started (`npm run dev` on port
-  `3001`).
+- **Frontend**: http://localhost:3001 — signup/login (email or Google) and a
+  logged-in landing page. The job board UI itself isn't built yet.
 
 ### Common commands
 
@@ -164,6 +196,18 @@ docker compose down
 docker compose down -v
 ```
 
+> **Migration state out of sync?** If `alembic upgrade head` fails with
+> `Can't locate revision identified by '...'`, your local Postgres remembers a
+> migration that isn't in `backend/migrations/versions/` on your current branch
+> (commonly happens after switching branches with different migrations applied).
+> Since local data is disposable, the easiest fix is to wipe and rebuild:
+>
+> ```bash
+> docker compose down -v          # from the repo root
+> docker compose up -d postgres redis
+> cd backend && uv run alembic upgrade head
+> ```
+
 ## API overview
 
 - `GET /health` — health check
@@ -172,6 +216,12 @@ docker compose down -v
   `is_active`, plus pagination via `page`/`page_size`
 - `GET /api/jobs/{id}` — job detail
 - `POST /api/jobs` — create a job (for future scraper scripts / admin tooling)
+- `POST /api/auth/signup` / `POST /api/auth/login` — email + password auth, returns a
+  JWT `access_token`
+- `GET /api/auth/google/login` — redirects to Google's OAuth consent screen
+- `GET /api/auth/google/callback` — Google's redirect target; on success, redirects
+  the browser to `{FRONTEND_URL}/auth/callback#access_token=...`
+- `GET /api/auth/me` — current user, requires `Authorization: Bearer <token>`
 
 ## Data model: `Job`
 

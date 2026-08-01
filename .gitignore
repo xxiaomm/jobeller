@@ -14,6 +14,9 @@ out/
 .env.*
 !.env.example
 
+# Secrets
+client_secret_*.json
+
 # IDE / OS
 .idea/
 .vscode/

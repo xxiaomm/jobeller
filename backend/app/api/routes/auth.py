@@ -77,8 +77,8 @@ async def google_login() -> RedirectResponse:
     return RedirectResponse(f"{GOOGLE_AUTH_URL}?{urlencode(params)}")
 
 
-@router.get("/google/callback", response_model=Token)
-async def google_callback(code: str, state: str, db: AsyncSession = Depends(get_db)) -> Token:
+@router.get("/google/callback")
+async def google_callback(code: str, state: str, db: AsyncSession = Depends(get_db)) -> RedirectResponse:
     try:
         verify_oauth_state(state)
     except ValueError as exc:
@@ -127,7 +127,9 @@ async def google_callback(code: str, state: str, db: AsyncSession = Depends(get_
         await db.commit()
         await db.refresh(user)
 
-    return Token(access_token=create_access_token(user.id))
+    token = create_access_token(user.id)
+    fragment = urlencode({"access_token": token, "token_type": "bearer"})
+    return RedirectResponse(f"{settings.frontend_url}/auth/callback#{fragment}")
 
 
 @router.get("/me", response_model=UserRead)
