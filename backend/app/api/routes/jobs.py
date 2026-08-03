@@ -22,6 +22,8 @@ async def list_jobs(
     min_years: Optional[int] = Query(None, description="Job's minimum required years <= this value"),
     max_years: Optional[int] = Query(None, description="Job's maximum required years >= this value"),
     education: Optional[str] = None,
+    min_salary: Optional[int] = Query(None, description="Job's max salary >= this value"),
+    visa_type: Optional[str] = None,
     posted_after: Optional[datetime] = None,
     posted_before: Optional[datetime] = None,
     is_active: Optional[bool] = True,
@@ -43,6 +45,10 @@ async def list_jobs(
         filters.append(Job.max_years_experience >= max_years)
     if education:
         filters.append(Job.education == education)
+    if min_salary is not None:
+        filters.append(Job.salary_max >= min_salary)
+    if visa_type:
+        filters.append(Job.visa_type == visa_type)
     if posted_after:
         filters.append(Job.posted_at >= posted_after)
     if posted_before:

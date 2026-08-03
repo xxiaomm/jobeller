@@ -52,8 +52,8 @@ export function JobCard({ job }: { job: Job }) {
       <div className="flex flex-1 flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold text-neutral-900">{job.title}</h2>
-            <p className="text-sm text-neutral-500">{job.company}</p>
+            <h2 className="text-base font-semibold text-neutral-900">{job.company}</h2>
+            <p className="text-sm text-neutral-500">{job.title}</p>
           </div>
           {postedAt && (
             <span className="shrink-0 text-xs text-neutral-400">{postedAt}</span>

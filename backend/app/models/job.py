@@ -26,6 +26,10 @@ class Job(Base):
     education: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     employment_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
+    salary_min: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    salary_max: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    visa_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, index=True)
+
     url: Mapped[str] = mapped_column(String(1024), unique=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 

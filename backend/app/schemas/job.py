@@ -15,6 +15,9 @@ class JobBase(BaseModel):
     max_years_experience: Optional[int] = None
     education: Optional[str] = None
     employment_type: Optional[str] = None
+    salary_min: Optional[int] = None
+    salary_max: Optional[int] = None
+    visa_type: Optional[str] = None
     url: str
     description: Optional[str] = None
     posted_at: Optional[datetime] = None

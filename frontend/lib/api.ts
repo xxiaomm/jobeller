@@ -12,9 +12,24 @@ export type Job = {
   max_years_experience: number | null;
   education: string | null;
   employment_type: string | null;
+  salary_min: number | null;
+  salary_max: number | null;
+  visa_type: string | null;
   url: string;
   description: string | null;
   posted_at: string | null;
+};
+
+export type JobFilters = {
+  title?: string;
+  company?: string;
+  location?: string;
+  level?: string;
+  education?: string;
+  minYears?: string;
+  minSalary?: string;
+  visaType?: string;
+  postedAfter?: string;
 };
 
 export type JobList = {
@@ -50,11 +65,35 @@ export function googleLoginUrl(): string {
   return `${API_URL}/api/auth/google/login`;
 }
 
-export async function fetchJobs(params: { page: number; pageSize: number }): Promise<JobList> {
-  const query = new URLSearchParams({
-    page: String(params.page),
-    page_size: String(params.pageSize),
-  });
+const FILTER_PARAM_NAMES: Record<keyof JobFilters, string> = {
+  title: "title",
+  company: "company",
+  location: "location",
+  level: "level",
+  education: "education",
+  minYears: "min_years",
+  minSalary: "min_salary",
+  visaType: "visa_type",
+  postedAfter: "posted_after",
+};
+
+export function filtersToSearchParams(filters: JobFilters): URLSearchParams {
+  const query = new URLSearchParams();
+  for (const key of Object.keys(FILTER_PARAM_NAMES) as (keyof JobFilters)[]) {
+    const value = filters[key];
+    if (value) query.set(FILTER_PARAM_NAMES[key], value);
+  }
+  return query;
+}
+
+export async function fetchJobs(params: {
+  page: number;
+  pageSize: number;
+  filters?: JobFilters;
+}): Promise<JobList> {
+  const query = filtersToSearchParams(params.filters ?? {});
+  query.set("page", String(params.page));
+  query.set("page_size", String(params.pageSize));
   const response = await apiFetch(`/api/jobs?${query}`);
   return response.json();
 }
