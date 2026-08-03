@@ -6,13 +6,15 @@ email as soon as a new job matches.
 
 > Current repo status: the backend base framework (data model + filter API + DB
 > migrations) is done. Email/Google-OAuth auth is wired up end to end (backend +
-> frontend). The job board UI and the scraping engine are chosen but not yet
-> implemented — see "Current status" below.
+> frontend), and the job board UI is live. A Greenhouse-based scraper fetches real
+> postings (Airbnb configured as the first company) — a Playwright/Scrapy engine for
+> career sites without a public API is chosen but not yet implemented. See "Current
+> status" below.
 
 ## Tech stack
 
 ### Frontend — Next.js (TypeScript) + Tailwind CSS
-*(auth pages implemented: signup/login/Google OAuth callback; job board UI not yet built)*
+*(auth pages implemented: signup/login/Google OAuth callback; job board UI (list + pagination) implemented; detail page not yet built)*
 
 - Next.js ships routing out of the box and supports SSR. SEO matters a lot for a job
   board — SSR lets each company's job listing/detail pages rank well on Google, which
@@ -77,8 +79,10 @@ email as soon as a new job matches.
 | `backend/` — FastAPI app, `Job` data model, filter API, Alembic migrations | ✅ Done |
 | `backend/` — email signup/login + Google OAuth | ✅ Done |
 | `frontend/` — Next.js auth pages (signup/login/Google OAuth callback) | ✅ Done |
-| `frontend/` — job board UI (filters/list/detail) | ⏳ Not started |
-| `scraper/` — Playwright/Scrapy scraping engine | ⏳ Not started |
+| `frontend/` — job board UI (list + pagination) | ✅ Done |
+| `frontend/` — job board detail page / filters | ⏳ Not started |
+| `scraper/` — Greenhouse job board fetcher (Airbnb configured) | ✅ Done |
+| `scraper/` — Playwright/Scrapy engine for non-API career sites | ⏳ Not started |
 | Redis notification/queue consumer logic | ⏳ Not started (Redis service is ready) |
 
 ## Running locally
@@ -180,8 +184,8 @@ email as soon as a new job matches.
 - **Backend Swagger docs** (interactive API explorer, auto-generated from the FastAPI
   routes): http://localhost:8001/docs
 - **Backend health check**: http://localhost:8001/health
-- **Frontend**: http://localhost:3001 — signup/login (email or Google) and a
-  logged-in landing page. The job board UI itself isn't built yet.
+- **Frontend**: http://localhost:3001 — signup/login (email or Google) and the job
+  board (paginated list of job cards).
 
 ### Common commands
 
@@ -208,6 +212,40 @@ docker compose down -v
 > cd backend && uv run alembic upgrade head
 > ```
 
+## Running the scraper
+
+`scraper/` fetches real job postings and pushes them into the backend via
+`POST /api/jobs/sync`. The first source is Greenhouse's public job board JSON API
+(`boards-api.greenhouse.io`), which many companies use for their careers site — Airbnb
+included — so no browser automation is needed for these.
+
+1. **Make sure the backend is running** (see "Running locally" above) — the scraper
+   talks to it over HTTP, it does not touch Postgres directly.
+
+2. **Install scraper dependencies:**
+
+   ```bash
+   cd scraper
+   uv sync
+   ```
+
+3. **Run a fetch**, passing the company's Greenhouse board token (the slug in
+   `https://boards.greenhouse.io/<board_token>`) and a display name:
+
+   ```bash
+   uv run python -m app.main airbnb Airbnb
+   ```
+
+   This prints how many jobs were created vs. updated. Re-running it is safe — jobs
+   are upserted by `(source, external_id)`, so nothing gets duplicated.
+
+   By default the scraper targets `http://localhost:8001`; set `JOBELL_API_URL` to
+   point it elsewhere.
+
+   > Greenhouse doesn't expose structured `level`/`education`/`employment_type`/years-
+   > of-experience fields — only a title and a freeform description — so those columns
+   > are left `null` for Greenhouse-sourced jobs for now.
+
 ## API overview
 
 - `GET /health` — health check
@@ -215,7 +253,9 @@ docker compose down -v
   `location`, `min_years`, `max_years`, `education`, `posted_after`, `posted_before`,
   `is_active`, plus pagination via `page`/`page_size`
 - `GET /api/jobs/{id}` — job detail
-- `POST /api/jobs` — create a job (for future scraper scripts / admin tooling)
+- `POST /api/jobs` — create a job (for admin tooling)
+- `POST /api/jobs/sync` — bulk upsert jobs by `(source, external_id)`; used by
+  `scraper/` to idempotently re-run fetches
 - `POST /api/auth/signup` / `POST /api/auth/login` — email + password auth, returns a
   JWT `access_token`
 - `GET /api/auth/google/login` — redirects to Google's OAuth consent screen

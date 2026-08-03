@@ -40,3 +40,13 @@ class JobList(BaseModel):
     page: int
     page_size: int
     items: List[JobRead]
+
+
+class JobSyncRequest(BaseModel):
+    source: str
+    jobs: List[JobCreate]
+
+
+class JobSyncResult(BaseModel):
+    created: int
+    updated: int

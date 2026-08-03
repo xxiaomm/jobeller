@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.models.job import Job
-from app.schemas.job import JobCreate, JobList, JobRead
+from app.schemas.job import JobCreate, JobList, JobRead, JobSyncRequest, JobSyncResult
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
@@ -80,3 +80,34 @@ async def create_job(payload: JobCreate, db: AsyncSession = Depends(get_db)) -> 
     await db.commit()
     await db.refresh(job)
     return job
+
+
+@router.post("/sync", response_model=JobSyncResult)
+async def sync_jobs(payload: JobSyncRequest, db: AsyncSession = Depends(get_db)) -> JobSyncResult:
+    if not payload.jobs:
+        return JobSyncResult(created=0, updated=0)
+
+    external_ids = [job.external_id for job in payload.jobs]
+    stmt = select(Job).where(Job.source == payload.source, Job.external_id.in_(external_ids))
+    existing_by_external_id = {job.external_id: job for job in (await db.execute(stmt)).scalars().all()}
+
+    created = 0
+    updated = 0
+    now = datetime.now(timezone.utc)
+
+    for item in payload.jobs:
+        data = item.model_dump()
+        data["source"] = payload.source
+        existing_job = existing_by_external_id.get(item.external_id)
+        if existing_job is not None:
+            for field, value in data.items():
+                setattr(existing_job, field, value)
+            existing_job.last_seen_at = now
+            existing_job.is_active = True
+            updated += 1
+        else:
+            db.add(Job(**data))
+            created += 1
+
+    await db.commit()
+    return JobSyncResult(created=created, updated=updated)
