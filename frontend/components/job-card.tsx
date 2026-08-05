@@ -1,27 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import type { Job } from "@/lib/api";
-
-function formatExperience(job: Job): string | null {
-  const { min_years_experience: min, max_years_experience: max } = job;
-  if (min != null && max != null) return `${min}–${max} yrs`;
-  if (min != null) return `${min}+ yrs`;
-  if (max != null) return `Up to ${max} yrs`;
-  return null;
-}
-
-function formatPostedAt(postedAt: string | null): string | null {
-  if (!postedAt) return null;
-  return new Date(postedAt).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
+import { formatExperience, formatPostedAt } from "@/lib/job-format";
 
 function BookmarkIcon({ filled }: { filled: boolean }) {
   return (
@@ -51,10 +36,12 @@ export function JobCard({ job }: { job: Job }) {
     <Card className="flex h-full flex-col gap-3">
       <div className="flex flex-1 flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold text-neutral-900">{job.company}</h2>
+          <Link href={`/jobs/${job.id}`} className="group">
+            <h2 className="text-base font-semibold text-neutral-900 group-hover:underline">
+              {job.company}
+            </h2>
             <p className="text-sm text-neutral-500">{job.title}</p>
-          </div>
+          </Link>
           {postedAt && (
             <span className="shrink-0 text-xs text-neutral-400">{postedAt}</span>
           )}
@@ -72,12 +59,12 @@ export function JobCard({ job }: { job: Job }) {
           <p className="line-clamp-5 whitespace-pre-line text-sm text-neutral-600">
             {job.description ?? "No description provided."}
           </p>
-          <button
-            type="button"
+          <Link
+            href={`/jobs/${job.id}`}
             className="self-start text-xs font-medium text-neutral-500 hover:text-neutral-900 hover:underline"
           >
             更多
-          </button>
+          </Link>
         </div>
       </div>
 

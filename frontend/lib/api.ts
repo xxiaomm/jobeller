@@ -97,3 +97,8 @@ export async function fetchJobs(params: {
   const response = await apiFetch(`/api/jobs?${query}`);
   return response.json();
 }
+
+export async function fetchJob(id: string | number): Promise<Job> {
+  const response = await apiFetch(`/api/jobs/${id}`);
+  return response.json();
+}
