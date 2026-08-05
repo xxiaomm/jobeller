@@ -1,34 +1,14 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 
+import { FavoriteButton } from "@/components/favorite-button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import type { Job } from "@/lib/api";
 import { formatExperience, formatPostedAt } from "@/lib/job-format";
 
-function BookmarkIcon({ filled }: { filled: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-5 w-5"
-      fill={filled ? "currentColor" : "none"}
-      stroke="currentColor"
-      strokeWidth={1.75}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M6 4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21l-6-3.5-6 3.5V4.5Z"
-      />
-    </svg>
-  );
-}
-
 export function JobCard({ job }: { job: Job }) {
-  const [isSaved, setIsSaved] = useState(false);
-
   const postedAt = formatPostedAt(job.posted_at);
   const experience = formatExperience(job);
 
@@ -77,17 +57,7 @@ export function JobCard({ job }: { job: Job }) {
         >
           Apply
         </a>
-        <button
-          type="button"
-          aria-label={isSaved ? "Unsave job" : "Save job"}
-          aria-pressed={isSaved}
-          onClick={() => setIsSaved((prev) => !prev)}
-          className="inline-flex shrink-0 items-center justify-center rounded-md border border-neutral-300 p-2 text-neutral-500 transition-colors hover:bg-neutral-50"
-        >
-          <span className={isSaved ? "text-neutral-900" : undefined}>
-            <BookmarkIcon filled={isSaved} />
-          </span>
-        </button>
+        <FavoriteButton jobId={job.id} />
       </div>
     </Card>
   );

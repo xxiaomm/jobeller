@@ -3,6 +3,7 @@ import "./globals.css";
 
 import { SiteHeader } from "@/components/site-header";
 import { AuthProvider } from "@/lib/auth-context";
+import { FavoritesProvider } from "@/lib/favorites-context";
 
 export const metadata: Metadata = {
   title: "Jobeller",
@@ -18,8 +19,10 @@ export default function RootLayout({
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
         <AuthProvider>
-          <SiteHeader />
-          {children}
+          <FavoritesProvider>
+            <SiteHeader />
+            {children}
+          </FavoritesProvider>
         </AuthProvider>
       </body>
     </html>

@@ -17,6 +17,9 @@ export function SiteHeader() {
         <div className="flex items-center gap-4 text-sm">
           {user ? (
             <>
+              <Link href="/favorites" className="text-neutral-500 hover:text-neutral-900">
+                Favorites
+              </Link>
               <span className="text-neutral-500">{user.full_name ?? user.email}</span>
               <button
                 type="button"

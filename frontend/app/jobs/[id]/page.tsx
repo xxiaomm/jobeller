@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 
+import { FavoriteButton } from "@/components/favorite-button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { ApiError, fetchJob, type Job } from "@/lib/api";
@@ -85,14 +86,17 @@ function JobDetail({ job }: { job: Job }) {
         {job.description ?? "No description provided."}
       </p>
 
-      <a
-        href={job.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex w-full items-center justify-center rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-700 sm:w-auto sm:self-start"
-      >
-        Apply on company site
-      </a>
+      <div className="flex items-center gap-2 sm:self-start">
+        <a
+          href={job.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex flex-1 items-center justify-center rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-700 sm:flex-none"
+        >
+          Apply on company site
+        </a>
+        <FavoriteButton jobId={job.id} />
+      </div>
     </Card>
   );
 }

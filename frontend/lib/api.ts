@@ -102,3 +102,22 @@ export async function fetchJob(id: string | number): Promise<Job> {
   const response = await apiFetch(`/api/jobs/${id}`);
   return response.json();
 }
+
+export type FavoriteStatus = {
+  job_id: number;
+  favorited: boolean;
+};
+
+export async function fetchFavoriteJobs(token: string): Promise<Job[]> {
+  const response = await apiFetch("/api/favorites", { token });
+  return response.json();
+}
+
+export async function addFavorite(jobId: number, token: string): Promise<FavoriteStatus> {
+  const response = await apiFetch(`/api/favorites/${jobId}`, { method: "POST", token });
+  return response.json();
+}
+
+export async function removeFavorite(jobId: number, token: string): Promise<void> {
+  await apiFetch(`/api/favorites/${jobId}`, { method: "DELETE", token });
+}
