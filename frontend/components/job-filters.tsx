@@ -10,7 +10,7 @@ import { Select } from "@/components/ui/select";
 import type { JobFilters } from "@/lib/api";
 
 const VISA_OPTIONS = [
-  { value: "", label: "不限" },
+  { value: "", label: "Any" },
   { value: "H1B", label: "H1B" },
   { value: "OPT", label: "OPT" },
   { value: "Green Card", label: "Green Card" },
@@ -86,10 +86,10 @@ export function JobFilters({
 
       <div className="flex shrink-0 gap-2">
         <Button type="button" className="w-auto whitespace-nowrap" onClick={() => onApply(draft)}>
-          应用筛选
+          Apply filters
         </Button>
         <Button type="button" variant="outline" className="w-auto whitespace-nowrap" onClick={handleReset}>
-          重置
+          Reset
         </Button>
       </div>
     </Card>

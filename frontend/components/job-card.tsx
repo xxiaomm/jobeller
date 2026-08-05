@@ -63,7 +63,7 @@ export function JobCard({ job }: { job: Job }) {
             href={`/jobs/${job.id}`}
             className="self-start text-xs font-medium text-neutral-500 hover:text-neutral-900 hover:underline"
           >
-            更多
+            More
           </Link>
         </div>
       </div>

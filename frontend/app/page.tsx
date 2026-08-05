@@ -78,7 +78,9 @@ function HomeContent() {
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 p-6">
       <h1 className="text-lg font-semibold text-neutral-900">Job openings</h1>
 
-      <JobFilters initialFilters={appliedFilters} onApply={handleApply} />
+      <div className="sticky top-0 z-10 bg-white pb-2">
+        <JobFilters initialFilters={appliedFilters} onApply={handleApply} />
+      </div>
 
       {isLoading && <p className="text-sm text-neutral-500">Loading…</p>}
       {error && <p className="text-sm text-red-600">{error}</p>}
