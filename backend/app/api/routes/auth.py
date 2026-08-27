@@ -133,5 +133,11 @@ async def google_callback(code: str, state: str, db: AsyncSession = Depends(get_
 
 
 @router.get("/me", response_model=UserRead)
-async def read_current_user(current_user: User = Depends(get_current_user)) -> User:
-    return current_user
+async def read_current_user(current_user: User = Depends(get_current_user)) -> UserRead:
+    return UserRead(
+        id=current_user.id,
+        email=current_user.email,
+        full_name=current_user.full_name,
+        created_at=current_user.created_at,
+        auth_provider="google" if current_user.google_sub else "email",
+    )

@@ -20,7 +20,9 @@ export function SiteHeader() {
               <Link href="/favorites" className="text-neutral-500 hover:text-neutral-900">
                 Favorites
               </Link>
-              <span className="text-neutral-500">{user.full_name ?? user.email}</span>
+              <Link href="/profile" className="text-neutral-500 hover:text-neutral-900">
+                {user.full_name ?? user.email}
+              </Link>
               <button
                 type="button"
                 onClick={logout}

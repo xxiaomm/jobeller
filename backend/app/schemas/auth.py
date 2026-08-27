@@ -17,6 +17,7 @@ class UserRead(BaseModel):
     email: str
     full_name: Optional[str] = None
     created_at: datetime
+    auth_provider: str
 
 
 class Token(BaseModel):

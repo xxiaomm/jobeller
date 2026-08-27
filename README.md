@@ -1,4 +1,4 @@
-# Jobell
+# Jobeller
 
 Track new job postings from top companies in near real time. Filter by title, level,
 location, years of experience, degree requirement and post date, and get notified by
@@ -7,7 +7,7 @@ email as soon as a new job matches.
 > Current repo status: the backend base framework (data model + filter API + DB
 > migrations) is done. Email/Google-OAuth auth is wired up end to end (backend +
 > frontend), and the job board UI is live. A Greenhouse-based scraper fetches real
-> postings (Airbnb configured as the first company) — a Playwright/Scrapy engine for
+> postings (Airbnb configured as the first company) and can run on an hourly schedule — a Playwright/Scrapy engine for
 > career sites without a public API is chosen but not yet implemented. See "Current
 > status" below.
 
@@ -82,6 +82,7 @@ email as soon as a new job matches.
 | `frontend/` — job board UI (list + pagination) | ✅ Done |
 | `frontend/` — job board detail page / filters | ⏳ Not started |
 | `scraper/` — Greenhouse job board fetcher (Airbnb configured) | ✅ Done |
+| `scraper/` — hourly scheduled fetching for all configured companies | ✅ Done |
 | `scraper/` — Playwright/Scrapy engine for non-API career sites | ⏳ Not started |
 | Redis notification/queue consumer logic | ⏳ Not started (Redis service is ready) |
 
@@ -158,13 +159,16 @@ email as soon as a new job matches.
 
 5. **Start the backend API.** This runs the FastAPI app defined in `app/main.py` with
    auto-reload on code changes, listening on port `8001` (chosen to not collide with
-   the `jobell` project's backend on `8000`).
+   the `jobeller` project's backend on `8000`).
 
    ```bash
    cd backend
    uv run uvicorn app.main:app --reload --port 8001
    ```
-
+   ```bash
+   lsof -i :8001 -sTCP:LISTEN   # 查出占用 8001 端口的进程 PID
+   kill 26016 26020             # kill 掉这些进程
+   ```
 6. **Install frontend dependencies and start the dev server.** This installs the
    Next.js app under `frontend/` and runs it on port `3001` (configured in
    `frontend/package.json`'s `dev` script).
@@ -195,7 +199,9 @@ uv run alembic revision --autogenerate -m "describe the change"
 
 # Stop local infrastructure (keeps data)
 docker compose down
+```
 
+```
 # Stop and wipe the data volumes
 docker compose down -v
 ```
@@ -236,11 +242,31 @@ included — so no browser automation is needed for these.
    uv run python -m app.main airbnb Airbnb
    ```
 
+   Or sync every company in `app/companies.py` (a list of `(board_token, company_name)`
+   pairs already verified to have a public Greenhouse board) in one run:
+
+   ```bash
+   uv run python -m app.main --all
+   ```
+
    This prints how many jobs were created vs. updated. Re-running it is safe — jobs
    are upserted by `(source, external_id)`, so nothing gets duplicated.
 
-   By default the scraper targets `http://localhost:8001`; set `JOBELL_API_URL` to
+   By default the scraper targets `http://localhost:8001`; set `JOBELLER_API_URL` to
    point it elsewhere.
+
+4. **Run the hourly scheduler** to fetch every company configured in
+   `scraper/app/companies.py`. It runs one fetch immediately on startup and then
+   repeats every hour. Keep this process running in a supervisor, container, or
+   terminal; press `Ctrl+C` to stop it:
+
+   ```bash
+   cd scraper
+   uv run python -m app.main --schedule
+   ```
+
+   The scheduler continues after an individual run fails and retries on the next
+   hourly interval. It does not require Redis or a separate cron service.
 
    > Greenhouse doesn't expose structured `level`/`education`/`employment_type`/years-
    > of-experience fields — only a title and a freeform description — so those columns
