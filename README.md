@@ -83,6 +83,7 @@ email as soon as a new job matches.
 | `frontend/` — job board detail page / filters | ⏳ Not started |
 | `scraper/` — Greenhouse job board fetcher (Airbnb configured) | ✅ Done |
 | `scraper/` — hourly scheduled fetching for all configured companies | ✅ Done |
+| `backend/` — mark missing jobs inactive after a complete company sync | ✅ Done |
 | `scraper/` — Playwright/Scrapy engine for non-API career sites | ⏳ Not started |
 | Redis notification/queue consumer logic | ⏳ Not started (Redis service is ready) |
 
@@ -249,8 +250,9 @@ included — so no browser automation is needed for these.
    uv run python -m app.main --all
    ```
 
-   This prints how many jobs were created vs. updated. Re-running it is safe — jobs
-   are upserted by `(source, external_id)`, so nothing gets duplicated.
+   This prints how many jobs were created, updated, and deactivated. Re-running it is
+   safe — jobs are upserted by `(source, external_id)`, so nothing gets duplicated;
+   jobs missing from a complete company snapshot are marked inactive.
 
    By default the scraper targets `http://localhost:8001`; set `JOBELLER_API_URL` to
    point it elsewhere.
@@ -281,7 +283,8 @@ included — so no browser automation is needed for these.
 - `GET /api/jobs/{id}` — job detail
 - `POST /api/jobs` — create a job (for admin tooling)
 - `POST /api/jobs/sync` — bulk upsert jobs by `(source, external_id)`; used by
-  `scraper/` to idempotently re-run fetches
+  `scraper/` to idempotently re-run fetches. Pass `company` with the complete
+  snapshot so jobs that disappeared from that company's source are marked inactive.
 - `POST /api/auth/signup` / `POST /api/auth/login` — email + password auth, returns a
   JWT `access_token`
 - `GET /api/auth/google/login` — redirects to Google's OAuth consent screen

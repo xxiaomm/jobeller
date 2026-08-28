@@ -16,7 +16,7 @@ def run(board_token: str, company_name: str) -> None:
 
     response = httpx.post(
         f"{API_URL}/api/jobs/sync",
-        json={"source": "greenhouse", "jobs": jobs},
+        json={"source": "greenhouse", "company": company_name, "jobs": jobs},
         timeout=30,
     )
     response.raise_for_status()
@@ -24,7 +24,8 @@ def run(board_token: str, company_name: str) -> None:
 
     print(
         f"{company_name}: fetched {len(jobs)} jobs from Greenhouse "
-        f"({result['created']} created, {result['updated']} updated)"
+        f"({result['created']} created, {result['updated']} updated, "
+        f"{result.get('deactivated', 0)} deactivated)"
     )
 
 

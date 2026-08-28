@@ -48,8 +48,11 @@ class JobList(BaseModel):
 class JobSyncRequest(BaseModel):
     source: str
     jobs: List[JobCreate]
+    # Identifies the complete source/company snapshot, including when it is empty.
+    company: Optional[str] = None
 
 
 class JobSyncResult(BaseModel):
     created: int
     updated: int
+    deactivated: int = 0

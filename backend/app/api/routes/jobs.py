@@ -90,15 +90,28 @@ async def create_job(payload: JobCreate, db: AsyncSession = Depends(get_db)) -> 
 
 @router.post("/sync", response_model=JobSyncResult)
 async def sync_jobs(payload: JobSyncRequest, db: AsyncSession = Depends(get_db)) -> JobSyncResult:
-    if not payload.jobs:
+    # A scraper run represents a complete snapshot for one company.  The company
+    # field is required for empty snapshots; without it we must not deactivate
+    # unrelated jobs from the same source.
+    company = payload.company
+    if company is None and payload.jobs:
+        companies = {job.company for job in payload.jobs}
+        if len(companies) == 1:
+            company = companies.pop()
+
+    if not payload.jobs and company is None:
         return JobSyncResult(created=0, updated=0)
 
     external_ids = [job.external_id for job in payload.jobs]
-    stmt = select(Job).where(Job.source == payload.source, Job.external_id.in_(external_ids))
-    existing_by_external_id = {job.external_id: job for job in (await db.execute(stmt)).scalars().all()}
+    existing_jobs_stmt = select(Job).where(Job.source == payload.source)
+    if external_ids:
+        existing_jobs_stmt = existing_jobs_stmt.where(Job.external_id.in_(external_ids))
+    existing_jobs = (await db.execute(existing_jobs_stmt)).scalars().all()
+    existing_by_external_id = {job.external_id: job for job in existing_jobs}
 
     created = 0
     updated = 0
+    deactivated = 0
     now = datetime.now(timezone.utc)
 
     for item in payload.jobs:
@@ -115,5 +128,18 @@ async def sync_jobs(payload: JobSyncRequest, db: AsyncSession = Depends(get_db))
             db.add(Job(**data))
             created += 1
 
+    if company is not None:
+        stale_stmt = select(Job).where(
+            Job.source == payload.source,
+            Job.company == company,
+            Job.is_active.is_(True),
+        )
+        if external_ids:
+            stale_stmt = stale_stmt.where(Job.external_id.not_in(external_ids))
+        stale_jobs = (await db.execute(stale_stmt)).scalars().all()
+        for stale_job in stale_jobs:
+            stale_job.is_active = False
+            deactivated += 1
+
     await db.commit()
-    return JobSyncResult(created=created, updated=updated)
+    return JobSyncResult(created=created, updated=updated, deactivated=deactivated)
