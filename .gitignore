@@ -24,3 +24,6 @@ client_secret_*.json
 
 # Docker volumes
 pgdata/
+
+# Scraper runtime statistics
+scraper/data/

@@ -83,6 +83,7 @@ email as soon as a new job matches.
 | `frontend/` — job board detail page / filters | ⏳ Not started |
 | `scraper/` — Greenhouse job board fetcher (Airbnb configured) | ✅ Done |
 | `scraper/` — hourly scheduled fetching for all configured companies | ✅ Done |
+| `scraper/` — persistent run statistics (counts, duration, failures) | ✅ Done |
 | `backend/` — mark missing jobs inactive after a complete company sync | ✅ Done |
 | `scraper/` — Playwright/Scrapy engine for non-API career sites | ⏳ Not started |
 | Redis notification/queue consumer logic | ⏳ Not started (Redis service is ready) |
@@ -269,6 +270,17 @@ included — so no browser automation is needed for these.
 
    The scheduler continues after an individual run fails and retries on the next
    hourly interval. It does not require Redis or a separate cron service.
+
+5. **View recent scrape statistics.** Each run is appended to
+   `scraper/data/scrape_history.jsonl`, including per-company results, duration,
+   errors, and aggregate fetched/created/updated/deactivated counts. The runtime data
+   directory is ignored by Git. Show the 10 most recent runs with:
+
+   ```bash
+   uv run python -m app.main --stats
+   ```
+
+   Set `SCRAPER_STATS_FILE` to store the JSONL history at a different path.
 
    > Greenhouse doesn't expose structured `level`/`education`/`employment_type`/years-
    > of-experience fields — only a title and a freeform description — so those columns
