@@ -4,17 +4,16 @@ Track new job postings from top companies in near real time. Filter by title, le
 location, years of experience, degree requirement and post date, and get notified by
 email as soon as a new job matches.
 
-> Current repo status: the backend base framework (data model + filter API + DB
-> migrations) is done. Email/Google-OAuth auth is wired up end to end (backend +
-> frontend), and the job board UI is live. A Greenhouse-based scraper fetches real
-> postings (Airbnb configured as the first company) and can run on an hourly schedule — a Playwright/Scrapy engine for
-> career sites without a public API is chosen but not yet implemented. See "Current
+> Current repo status: the core job-board MVP is implemented. Users can sign up or
+> log in, filter and paginate jobs with shareable URL state, open job details, and
+> save favorites. A Greenhouse scraper syncs eight configured companies on demand or
+> hourly. Email alerts and non-API scraping are not implemented yet. See "Current
 > status" below.
 
 ## Tech stack
 
 ### Frontend — Next.js (TypeScript) + Tailwind CSS
-*(auth pages implemented: signup/login/Google OAuth callback; job board UI (list + pagination) implemented; detail page not yet built)*
+*(signup/login/Google OAuth callback, filters, pagination, job details, profile, and favorites are implemented)*
 
 - Next.js ships routing out of the box and supports SSR. SEO matters a lot for a job
   board — SSR lets each company's job listing/detail pages rank well on Google, which
@@ -79,14 +78,15 @@ email as soon as a new job matches.
 | `backend/` — FastAPI app, `Job` data model, filter API, Alembic migrations | ✅ Done |
 | `backend/` — email signup/login + Google OAuth | ✅ Done |
 | `frontend/` — Next.js auth pages (signup/login/Google OAuth callback) | ✅ Done |
-| `frontend/` — job board UI (list + pagination) | ✅ Done |
-| `frontend/` — job board detail page / filters | ⏳ Not started |
-| `scraper/` — Greenhouse job board fetcher (Airbnb configured) | ✅ Done |
+| `frontend/` — job list, URL-synced filters, pagination, and job details | ✅ Done |
+| `frontend/` + `backend/` — user profile and job favorites | ✅ Done |
+| `scraper/` — Greenhouse job board fetcher (8 companies configured) | ✅ Done |
 | `scraper/` — hourly scheduled fetching for all configured companies | ✅ Done |
 | `scraper/` — persistent run statistics (counts, duration, failures) | ✅ Done |
 | `backend/` — mark missing jobs inactive after a complete company sync | ✅ Done |
+| Core regression tests — login, filters, favorites, sync, and URL state | ✅ Done |
 | `scraper/` — Playwright/Scrapy engine for non-API career sites | ⏳ Not started |
-| Redis notification/queue consumer logic | ⏳ Not started (Redis service is ready) |
+| Saved searches, Redis notification worker, and email delivery | ⏳ Not started |
 
 ## Running locally
 
@@ -151,8 +151,8 @@ email as soon as a new job matches.
 
 4. **Run database migrations.** This connects to the Postgres container from step 1
    and applies every migration under `backend/migrations/versions/` in order —
-   currently just `0001_create_jobs_table`, which creates the `jobs` table and its
-   indexes.
+   currently four migrations, which create the jobs, users, and favorites tables and
+   add salary and visa fields.
 
    ```bash
    cd backend
@@ -196,8 +196,14 @@ email as soon as a new job matches.
 ### Common commands
 
 ```bash
+# Run backend API regression tests (uses an isolated in-memory SQLite database)
+(cd backend && uv run pytest -q)
+
+# Run frontend static checks, URL-state tests, and a production build
+(cd frontend && npm run lint && npm run typecheck && npm test && npm run build)
+
 # After adding/changing Job model fields, generate a new migration
-uv run alembic revision --autogenerate -m "describe the change"
+(cd backend && uv run alembic revision --autogenerate -m "describe the change")
 
 # Stop local infrastructure (keeps data)
 docker compose down
@@ -303,6 +309,9 @@ included — so no browser automation is needed for these.
 - `GET /api/auth/google/callback` — Google's redirect target; on success, redirects
   the browser to `{FRONTEND_URL}/auth/callback#access_token=...`
 - `GET /api/auth/me` — current user, requires `Authorization: Bearer <token>`
+- `GET /api/favorites` — current user's saved jobs, requires authentication
+- `POST /api/favorites/{job_id}` / `DELETE /api/favorites/{job_id}` — save or remove
+  a job, requires authentication
 
 ## Data model: `Job`
 

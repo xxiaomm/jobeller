@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { JobCard } from "@/components/job-card";
@@ -9,68 +9,73 @@ import { Pagination } from "@/components/pagination";
 import {
   ApiError,
   fetchJobs,
+  filtersFromSearchParams,
   filtersToSearchParams,
   JobFilters as JobFiltersType,
   JobList,
+  pageFromSearchParams,
 } from "@/lib/api";
 
 const PAGE_SIZE = 20;
-
-function filtersFromSearchParams(searchParams: URLSearchParams): JobFiltersType {
-  return {
-    title: searchParams.get("title") ?? undefined,
-    company: searchParams.get("company") ?? undefined,
-    location: searchParams.get("location") ?? undefined,
-    level: searchParams.get("level") ?? undefined,
-    education: searchParams.get("education") ?? undefined,
-    minYears: searchParams.get("min_years") ?? undefined,
-    minSalary: searchParams.get("min_salary") ?? undefined,
-    visaType: searchParams.get("visa_type") ?? undefined,
-    postedAfter: searchParams.get("posted_after") ?? undefined,
-  };
-}
 
 function HomeContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const [page, setPage] = useState(1);
-  const [appliedFilters, setAppliedFilters] = useState<JobFiltersType>(() =>
-    filtersFromSearchParams(searchParams),
+  const urlQuery = searchParams.toString();
+  const appliedFilters = useMemo(
+    () => filtersFromSearchParams(new URLSearchParams(urlQuery)),
+    [urlQuery],
   );
-  const [jobList, setJobList] = useState<JobList | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const page = useMemo(
+    () => pageFromSearchParams(new URLSearchParams(urlQuery)),
+    [urlQuery],
+  );
+  const requestKey = `${page}:${filtersToSearchParams(appliedFilters).toString()}`;
+  const [result, setResult] = useState<{
+    key: string;
+    data?: JobList;
+    error?: string;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    setIsLoading(true);
-    setError(null);
 
     fetchJobs({ page, pageSize: PAGE_SIZE, filters: appliedFilters })
       .then((data) => {
-        if (!cancelled) setJobList(data);
+        if (!cancelled) setResult({ key: requestKey, data });
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err instanceof ApiError ? err.message : "Something went wrong");
+          setResult({
+            key: requestKey,
+            error: err instanceof ApiError ? err.message : "Something went wrong",
+          });
         }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [page, appliedFilters]);
+  }, [page, requestKey, appliedFilters]);
 
   const handleApply = (filters: JobFiltersType) => {
-    setAppliedFilters(filters);
-    setPage(1);
-    router.push(`${pathname}?${filtersToSearchParams(filters)}`);
+    const query = filtersToSearchParams(filters).toString();
+    router.push(query ? `${pathname}?${query}` : pathname);
   };
+
+  const handlePageChange = (nextPage: number) => {
+    const query = filtersToSearchParams(appliedFilters);
+    if (nextPage > 1) query.set("page", String(nextPage));
+    const queryString = query.toString();
+    router.push(queryString ? `${pathname}?${queryString}` : pathname);
+  };
+
+  const currentResult = result?.key === requestKey ? result : null;
+  const jobList = currentResult?.data ?? null;
+  const error = currentResult?.error ?? null;
+  const isLoading = currentResult === null;
 
   const totalPages = jobList ? Math.max(1, Math.ceil(jobList.total / jobList.page_size)) : 1;
 
@@ -79,7 +84,11 @@ function HomeContent() {
       <h1 className="text-lg font-semibold text-neutral-900">Job openings</h1>
 
       <div className="sticky top-0 z-10 bg-white pb-2">
-        <JobFilters initialFilters={appliedFilters} onApply={handleApply} />
+        <JobFilters
+          key={filtersToSearchParams(appliedFilters).toString()}
+          initialFilters={appliedFilters}
+          onApply={handleApply}
+        />
       </div>
 
       {isLoading && <p className="text-sm text-neutral-500">Loading…</p>}
@@ -98,7 +107,7 @@ function HomeContent() {
       )}
 
       {jobList && (
-        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+        <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
       )}
     </main>
   );

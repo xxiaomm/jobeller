@@ -16,32 +16,37 @@ export default function JobDetailPage({
 }) {
   const { id } = use(params);
 
-  const [job, setJob] = useState<Job | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{
+    id: string;
+    job?: Job;
+    error?: string;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    setIsLoading(true);
-    setError(null);
 
     fetchJob(id)
       .then((data) => {
-        if (!cancelled) setJob(data);
+        if (!cancelled) setResult({ id, job: data });
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err instanceof ApiError ? err.message : "Something went wrong");
+          setResult({
+            id,
+            error: err instanceof ApiError ? err.message : "Something went wrong",
+          });
         }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
       });
 
     return () => {
       cancelled = true;
     };
   }, [id]);
+
+  const currentResult = result?.id === id ? result : null;
+  const job = currentResult?.job ?? null;
+  const error = currentResult?.error ?? null;
+  const isLoading = currentResult === null;
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 p-6">

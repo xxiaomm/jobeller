@@ -11,11 +11,13 @@ import { useFavorites } from "@/lib/favorites-context";
 export default function FavoritesPage() {
   const router = useRouter();
   const { user, token, isLoading: authLoading } = useAuth();
-  const { isFavorited } = useFavorites();
+  const { isFavorited, isLoading: favoritesLoading } = useFavorites();
 
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{
+    token: string;
+    jobs?: Job[];
+    error?: string;
+  } | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -25,20 +27,18 @@ export default function FavoritesPage() {
     }
 
     let cancelled = false;
-    setIsLoading(true);
-    setError(null);
 
     fetchFavoriteJobs(token)
       .then((data) => {
-        if (!cancelled) setJobs(data);
+        if (!cancelled) setResult({ token, jobs: data });
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err instanceof ApiError ? err.message : "Something went wrong");
+          setResult({
+            token,
+            error: err instanceof ApiError ? err.message : "Something went wrong",
+          });
         }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
       });
 
     return () => {
@@ -46,6 +46,10 @@ export default function FavoritesPage() {
     };
   }, [authLoading, user, token, router]);
 
+  const currentResult = token && result?.token === token ? result : null;
+  const jobs = currentResult?.jobs ?? [];
+  const error = currentResult?.error ?? null;
+  const isLoading = authLoading || favoritesLoading || (!!token && currentResult === null);
   const visibleJobs = jobs.filter((job) => isFavorited(job.id));
 
   return (

@@ -86,6 +86,25 @@ export function filtersToSearchParams(filters: JobFilters): URLSearchParams {
   return query;
 }
 
+export function filtersFromSearchParams(searchParams: URLSearchParams): JobFilters {
+  return {
+    title: searchParams.get("title") ?? undefined,
+    company: searchParams.get("company") ?? undefined,
+    location: searchParams.get("location") ?? undefined,
+    level: searchParams.get("level") ?? undefined,
+    education: searchParams.get("education") ?? undefined,
+    minYears: searchParams.get("min_years") ?? undefined,
+    minSalary: searchParams.get("min_salary") ?? undefined,
+    visaType: searchParams.get("visa_type") ?? undefined,
+    postedAfter: searchParams.get("posted_after") ?? undefined,
+  };
+}
+
+export function pageFromSearchParams(searchParams: URLSearchParams): number {
+  const page = Number(searchParams.get("page"));
+  return Number.isInteger(page) && page > 0 ? page : 1;
+}
+
 export async function fetchJobs(params: {
   page: number;
   pageSize: number;
